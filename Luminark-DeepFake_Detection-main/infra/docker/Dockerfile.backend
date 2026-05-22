@@ -1,0 +1,50 @@
+# ============================================
+# Luminark Backend Dockerfile
+# CPU-optimized for local/edge deployment
+# ============================================
+
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    libopencv-dev \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies
+COPY requirements/base.txt requirements/base.txt
+RUN pip install -r requirements/base.txt
+
+# PyTorch CPU-only
+RUN pip install \
+    torch==2.1.2 \
+    torchvision==0.16.2 \
+    torchaudio==2.1.2 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Application code
+COPY core/ /app/core/
+COPY backend/ /app/backend/
+
+# Create non-root user
+RUN useradd -m -u 1000 luminark && \
+    chown -R luminark:luminark /app
+USER luminark
+
+# Environment
+ENV PYTHONPATH=/app
+ENV MODEL_DEVICE=cpu
+
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run
+CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]

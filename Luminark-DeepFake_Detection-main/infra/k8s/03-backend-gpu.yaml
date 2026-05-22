@@ -1,0 +1,106 @@
+# ============================================
+# Luminark Backend - GPU Deployment
+# For heavy/cloud workloads, GPU-accelerated
+# ============================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-gpu
+  namespace: luminark
+  labels:
+    app: luminark
+    component: backend
+    compute: gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: luminark
+      component: backend
+      compute: gpu
+  template:
+    metadata:
+      labels:
+        app: luminark
+        component: backend
+        compute: gpu
+    spec:
+      # Schedule on GPU nodes
+      nodeSelector:
+        accelerator: nvidia-gpu
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: backend
+          image: luminark/backend-gpu:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: luminark-config
+            - secretRef:
+                name: luminark-secrets
+          env:
+            - name: MODEL_DEVICE
+              value: "cuda"
+            - name: LUMINARK_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: luminark-secrets
+                  key: API_KEYS
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "4Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "4000m"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          volumeMounts:
+            - name: model-cache
+              mountPath: /app/weights
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: model-cache-pvc
+
+---
+# ============================================
+# Horizontal Pod Autoscaler - GPU Backend
+# ============================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-gpu-hpa
+  namespace: luminark
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-gpu
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60

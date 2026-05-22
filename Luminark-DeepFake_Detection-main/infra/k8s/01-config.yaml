@@ -1,0 +1,33 @@
+# ============================================
+# Luminark ConfigMap
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: luminark-config
+  namespace: luminark
+data:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  LOG_LEVEL: "INFO"
+  API_HOST: "0.0.0.0"
+  API_PORT: "8000"
+
+---
+# ============================================
+# Luminark Secrets
+# ============================================
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: luminark-secrets
+  namespace: luminark
+type: Opaque
+stringData:
+  # Replace with actual secrets in production
+  DATABASE_URL: "postgresql://luminark:CHANGE_ME@postgres:5432/luminark"
+  REDIS_URL: "redis://redis:6379/0"
+  API_KEYS: "lum_prod_key_CHANGE_ME"
+  APP_SECRET_KEY: "CHANGE_ME_GENERATE_RANDOM_KEY"

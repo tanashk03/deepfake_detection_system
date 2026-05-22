@@ -1,0 +1,97 @@
+# ============================================
+# Luminark Backend - CPU Deployment
+# For edge/light workloads, autoscales based on requests
+# ============================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-cpu
+  namespace: luminark
+  labels:
+    app: luminark
+    component: backend
+    compute: cpu
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: luminark
+      component: backend
+      compute: cpu
+  template:
+    metadata:
+      labels:
+        app: luminark
+        component: backend
+        compute: cpu
+    spec:
+      containers:
+        - name: backend
+          image: luminark/backend:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: luminark-config
+            - secretRef:
+                name: luminark-secrets
+          env:
+            - name: MODEL_DEVICE
+              value: "cpu"
+            - name: LUMINARK_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: luminark-secrets
+                  key: API_KEYS
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - name: model-cache
+              mountPath: /app/weights
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: model-cache-pvc
+
+---
+# ============================================
+# Horizontal Pod Autoscaler - CPU Backend
+# ============================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-cpu-hpa
+  namespace: luminark
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-cpu
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

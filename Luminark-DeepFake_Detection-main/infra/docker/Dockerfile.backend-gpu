@@ -1,0 +1,54 @@
+# ============================================
+# Luminark Backend Dockerfile (GPU)
+# CUDA-enabled for cloud deployment
+# ============================================
+
+FROM nvidia/cuda:12.1-runtime-ubuntu22.04
+
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3-pip \
+    python3.10-dev \
+    build-essential \
+    cmake \
+    libopencv-dev \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/python3.10 /usr/bin/python
+
+# Python dependencies
+COPY requirements/base.txt requirements/base.txt
+RUN pip install --no-cache-dir -r requirements/base.txt
+
+# PyTorch with CUDA
+RUN pip install --no-cache-dir \
+    torch==2.1.2 \
+    torchvision==0.16.2 \
+    torchaudio==2.1.2 \
+    --index-url https://download.pytorch.org/whl/cu121
+
+# Application code
+COPY core/ /app/core/
+COPY backend/ /app/backend/
+
+# Create non-root user
+RUN useradd -m -u 1000 luminark && \
+    chown -R luminark:luminark /app
+USER luminark
+
+# Environment
+ENV PYTHONPATH=/app
+ENV MODEL_DEVICE=cuda
+
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run with multiple workers for production
+CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

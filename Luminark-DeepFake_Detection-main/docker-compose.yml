@@ -1,0 +1,100 @@
+# ============================================
+# Luminark Local Development Stack
+# ============================================
+# One command: docker compose up
+# ============================================
+
+services:
+  # ===========================================
+  # Backend API (CPU mode for local dev)
+  # ===========================================
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - APP_DEBUG=true
+      - MODEL_DEVICE=cpu
+      - DATABASE_URL=postgresql://luminark:luminark@db:5432/luminark
+      - REDIS_URL=redis://cache:6379/0
+      - LUMINARK_API_KEYS=lum_dev_key_12345,lum_test_key_12345
+    volumes:
+      - ./core:/app/core:ro
+      - ./backend:/app/backend:ro
+      - ./models:/app/models:ro
+      - model_cache:/app/weights
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ===========================================
+  # Frontend (React + Vite dev server)
+  # ===========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_PROXY_TARGET=http://backend:8000
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=luminark
+      - POSTGRES_PASSWORD=luminark
+      - POSTGRES_DB=luminark
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U luminark" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================
+  # Redis Cache
+  # ===========================================
+  cache:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  model_cache:
+
+
+networks:
+  default:
+    name: luminark-network

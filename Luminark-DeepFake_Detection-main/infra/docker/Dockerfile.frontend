@@ -1,0 +1,23 @@
+# ============================================
+# Luminark Frontend Dockerfile
+# React + Vite
+# ============================================
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Dependencies
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install
+
+# Application code
+COPY frontend/ ./
+
+# Build for production (optional, dev server for local)
+# RUN npm run build
+
+EXPOSE 3000
+
+# Development server
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

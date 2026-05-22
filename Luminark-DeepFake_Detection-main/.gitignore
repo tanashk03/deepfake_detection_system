@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Dataset (large files)
+dataset/
+
+# Model weights (large files, download separately)
+models/*.pt
+models/*.pth
+models/*.bin
+!models/.gitkeep
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+.env.local
+*.env
+
+# Uploads
+uploads/
+frontend/node_modules/
+frontend/dist/

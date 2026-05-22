@@ -1,0 +1,75 @@
+# ============================================
+# Luminark Services
+# ============================================
+
+# Backend Service (routes to both CPU and GPU)
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: luminark
+  labels:
+    app: luminark
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: luminark
+    component: backend
+    # Note: Routes to all backends (CPU + GPU)
+    # Use separate services if you need to split traffic
+
+---
+# Backend CPU-only Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-cpu
+  namespace: luminark
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: luminark
+    component: backend
+    compute: cpu
+
+---
+# Backend GPU-only Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-gpu
+  namespace: luminark
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: luminark
+    component: backend
+    compute: gpu
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: luminark
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: luminark
+    component: frontend
